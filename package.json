@@ -1,0 +1,224 @@
+{
+  "name": "code-anonymizer",
+  "displayName": "Code Anonymizer",
+  "description": "Anonymize source code with live-previewed rules before sharing it with an AI",
+  "version": "0.0.2",
+  "publisher": "aiekick",
+  "icon": "medias/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e28",
+    "theme": "dark"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aiekick/CodeAnonymizer"
+  },
+  "keywords": [
+    "anonymize",
+    "anonymization",
+    "redact",
+    "sanitize",
+    "confidential",
+    "privacy",
+    "ai",
+    "llm",
+    "license header",
+    "refactoring"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "codeAnonymizer.openPreview",
+        "title": "Switch to Anonymized Preview",
+        "category": "Code Anonymizer",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "codeAnonymizer.openSource",
+        "title": "Switch to Original File",
+        "category": "Code Anonymizer",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "codeAnonymizer.openDiff",
+        "title": "Compare Original with Anonymized",
+        "category": "Code Anonymizer",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "codeAnonymizer.editRules",
+        "title": "Edit Anonymization Rules",
+        "category": "Code Anonymizer",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "codeAnonymizer.copyAnonymized",
+        "title": "Copy Anonymized Code",
+        "category": "Code Anonymizer",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "codeAnonymizer.showReport",
+        "title": "Show Anonymization Report",
+        "category": "Code Anonymizer",
+        "icon": "$(output)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "codeAnonymizer.openPreview",
+        "key": "ctrl+k a",
+        "mac": "cmd+k a",
+        "when": "editorTextFocus && resourceScheme != anonymized"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "codeAnonymizer.contextMenu",
+        "label": "Code Anonymizer"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "codeAnonymizer.openPreview",
+          "when": "(resourceScheme == file || resourceScheme == untitled || resourceScheme == vscode-remote) && !isInDiffEditor",
+          "group": "navigation@90"
+        },
+        {
+          "command": "codeAnonymizer.openSource",
+          "when": "resourceScheme == anonymized",
+          "group": "navigation@0"
+        },
+        {
+          "command": "codeAnonymizer.copyAnonymized",
+          "when": "resourceScheme == anonymized",
+          "group": "navigation@1"
+        },
+        {
+          "command": "codeAnonymizer.openDiff",
+          "when": "resourceScheme == anonymized",
+          "group": "navigation@2"
+        },
+        {
+          "command": "codeAnonymizer.editRules",
+          "when": "resourceScheme == anonymized",
+          "group": "navigation@3"
+        }
+      ],
+      "editor/context": [
+        {
+          "submenu": "codeAnonymizer.contextMenu",
+          "group": "9_anonymizer@1"
+        }
+      ],
+      "explorer/context": [
+        {
+          "submenu": "codeAnonymizer.contextMenu",
+          "when": "!explorerResourceIsFolder",
+          "group": "9_anonymizer@1"
+        }
+      ],
+      "codeAnonymizer.contextMenu": [
+        {
+          "command": "codeAnonymizer.openPreview",
+          "when": "resourceScheme != anonymized",
+          "group": "1_view@1"
+        },
+        {
+          "command": "codeAnonymizer.openSource",
+          "when": "resourceScheme == anonymized",
+          "group": "1_view@1"
+        },
+        {
+          "command": "codeAnonymizer.openDiff",
+          "group": "1_view@2"
+        },
+        {
+          "command": "codeAnonymizer.copyAnonymized",
+          "group": "2_use@1"
+        },
+        {
+          "command": "codeAnonymizer.showReport",
+          "group": "2_use@2"
+        },
+        {
+          "command": "codeAnonymizer.editRules",
+          "group": "3_rules@1"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "submenu": "codeAnonymizer.contextMenu",
+          "group": "9_anonymizer@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "codeAnonymizer.openSource",
+          "when": "resourceScheme == anonymized"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Code Anonymizer",
+      "properties": {
+        "codeAnonymizer.rulesFile": {
+          "type": "string",
+          "default": ".vscode/anonymizer.json",
+          "scope": "resource",
+          "markdownDescription": "Rules file applied to the files of the workspace folder. Relative to the workspace folder, or absolute to share one rules file between projects."
+        }
+      }
+    },
+    "languages": [
+      {
+        "id": "jsonc",
+        "filenamePatterns": [
+          "**/.vscode/anonymizer.json",
+          "**/*.anonymizer.json"
+        ]
+      }
+    ],
+    "jsonValidation": [
+      {
+        "fileMatch": [
+          "**/.vscode/anonymizer.json",
+          "**/*.anonymizer.json"
+        ],
+        "url": "./schemas/anonymizer.schema.json"
+      }
+    ]
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other",
+    "Formatters"
+  ],
+  "extensionKind": [
+    "ui",
+    "workspace"
+  ],
+  "activationEvents": [
+    "onFileSystem:anonymized",
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "browser": "./out/web/extension.js",
+  "scripts": {
+    "check": "tsc --noEmit -p ./ && tsc --noEmit -p ./tsconfig.json",
+    "compile": "node ./scripts/clean.js && tsc -p ./ && node ./scripts/esbuild.js",
+    "package": "node ./scripts/clean.js && node ./scripts/esbuild.js --production && node ./scripts/package.js",
+    "watch": "tsc -watch -p ./",
+    "test": "tsc -p tsconfig.tests.json && node --test out-tests/tests/*.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.80.0",
+    "esbuild": "^0.28.1",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,66 @@
+{
+  // Code Anonymizer rules.
+  // The rules run from top to bottom, each one on the output of the previous one.
+  // Every rule accepts: "description", "enabled": false, "languages": ["cpp"], "files": "**/*.h".
+  // Regular expressions are JavaScript ones, multiline: ^ and $ match at line boundaries.
+  "rules": [
+    {
+      "type": "removeHeader",
+      "description": "License header"
+      // "match": "copyright|license"   (default: copyright, license, (c), all rights reserved, spdx)
+    },
+    {
+      "type": "removeLines",
+      "description": "Internal includes",
+      "match": "^\\s*#include\\s+[<\"]acme/"
+    },
+    {
+      "type": "removeBlock",
+      "description": "Sections marked as confidential in the code",
+      "begin": "ANONYMIZE-BEGIN",
+      "end": "ANONYMIZE-END",
+      "replace": "// [confidential section removed]"
+    },
+    {
+      "type": "removeFunctionBody",
+      "description": "Critical algorithms",
+      "name": "computeSecret|Crypto::\\w+",
+      "replace": "// [algorithm removed]"
+    },
+    {
+      "type": "replaceMap",
+      "description": "Company types to standard types",
+      "wholeWord": true,
+      "map": {
+        "ACME::te_bool_type": "bool",
+        // wildcard: * is the rest of an identifier, ? one character, reused as $1, $2...
+        // ACME::te_uint32_type -> uint32_t, ACME::te_int8_type -> int8_t
+        "ACME::te_*_type": { "replace": "$1_t", "wildcard": true },
+        // wholeWord does not match inside a word: a prefix overrides it
+        "ACME_": { "replace": "", "wholeWord": false }
+      }
+    },
+    {
+      "type": "replace",
+      "description": "Company namespace",
+      "find": "\\bACME::",
+      "replace": "",
+      "regex": true
+    },
+    {
+      "type": "pseudonymize",
+      "description": "Product names, numbered consistently",
+      "match": "\\bAcme\\w*",
+      "template": "Product{n}",
+      "caseSensitive": false
+    },
+    {
+      "type": "removeComments",
+      "enabled": false,
+      "keep": "^//\\s*(TODO|FIXME)"
+    }
+  ],
+  // Regular expressions (case insensitive) that must not survive the anonymization:
+  // they are highlighted in the preview, and copying asks for a confirmation.
+  "forbidden": ["acme", "@acme\\.com"]
+}

@@ -1,0 +1,540 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Code Anonymizer rules",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "rules": {
+      "type": "array",
+      "description": "Applied from top to bottom, each rule on the output of the previous one.",
+      "items": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "oneOf": [
+          {
+            "$ref": "#/definitions/replace"
+          },
+          {
+            "$ref": "#/definitions/replaceMap"
+          },
+          {
+            "$ref": "#/definitions/removeLines"
+          },
+          {
+            "$ref": "#/definitions/removeBlock"
+          },
+          {
+            "$ref": "#/definitions/removeHeader"
+          },
+          {
+            "$ref": "#/definitions/removeComments"
+          },
+          {
+            "$ref": "#/definitions/removeFunctionBody"
+          },
+          {
+            "$ref": "#/definitions/pseudonymize"
+          }
+        ],
+        "defaultSnippets": [
+          {
+            "label": "replace",
+            "description": "Replace a token or a regex",
+            "body": {
+              "type": "replace",
+              "find": "$1",
+              "replace": "$2"
+            }
+          },
+          {
+            "label": "replaceMap",
+            "description": "Replace several tokens",
+            "body": {
+              "type": "replaceMap",
+              "wholeWord": true,
+              "wildcard": true,
+              "map": {
+                "$1": "$2"
+              }
+            }
+          },
+          {
+            "label": "removeLines",
+            "description": "Remove the lines matching a regex",
+            "body": {
+              "type": "removeLines",
+              "match": "$1"
+            }
+          },
+          {
+            "label": "removeBlock",
+            "description": "Remove the lines between two markers",
+            "body": {
+              "type": "removeBlock",
+              "begin": "${1:ANONYMIZE-BEGIN}",
+              "end": "${2:ANONYMIZE-END}",
+              "replace": "${3:// [removed]}"
+            }
+          },
+          {
+            "label": "removeHeader",
+            "description": "Remove the license header",
+            "body": {
+              "type": "removeHeader"
+            }
+          },
+          {
+            "label": "removeComments",
+            "description": "Remove the comments",
+            "body": {
+              "type": "removeComments"
+            }
+          },
+          {
+            "label": "removeFunctionBody",
+            "description": "Empty the body of functions",
+            "body": {
+              "type": "removeFunctionBody",
+              "name": "$1",
+              "replace": "${2:// [algorithm removed]}"
+            }
+          },
+          {
+            "label": "pseudonymize",
+            "description": "Replace each distinct match by a numbered alias",
+            "body": {
+              "type": "pseudonymize",
+              "match": "$1",
+              "template": "${2:Name}{n}"
+            }
+          }
+        ]
+      }
+    },
+    "forbidden": {
+      "type": "array",
+      "description": "Case insensitive regular expressions that must not remain in the anonymized code. Remaining matches are highlighted in the preview, and copying asks for a confirmation.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "definitions": {
+    "description": {
+      "type": "string",
+      "description": "Shown in the report."
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "false to keep the rule without applying it."
+    },
+    "languages": {
+      "description": "Language ids the rule applies to (cpp, c, python...). All languages when omitted.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "files": {
+      "description": "Globs of the files the rule applies to, relative to the workspace folder (\"**/*.h\"). A glob without / matches the file name. All files when omitted.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "caseSensitive": {
+      "type": "boolean",
+      "description": "Case sensitive matching (default: true)."
+    },
+    "in": {
+      "description": "Restrict the replacement to code, comments or string literals. Everywhere when omitted.",
+      "anyOf": [
+        {
+          "enum": [
+            "code",
+            "comment",
+            "string"
+          ]
+        },
+        {
+          "type": "array",
+          "items": {
+            "enum": [
+              "code",
+              "comment",
+              "string"
+            ]
+          }
+        }
+      ]
+    },
+    "replace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "find"
+      ],
+      "description": "Replace a token or a regular expression.",
+      "properties": {
+        "type": {
+          "const": "replace"
+        },
+        "description": {
+          "$ref": "#/definitions/description"
+        },
+        "enabled": {
+          "$ref": "#/definitions/enabled"
+        },
+        "languages": {
+          "$ref": "#/definitions/languages"
+        },
+        "files": {
+          "$ref": "#/definitions/files"
+        },
+        "find": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Text to find, or a regular expression when regex is true."
+        },
+        "replace": {
+          "type": "string",
+          "description": "Replacement (empty when omitted). With regex, $1, $2... insert the groups."
+        },
+        "regex": {
+          "type": "boolean",
+          "default": false
+        },
+        "wholeWord": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only match when not surrounded by word characters."
+        },
+        "caseSensitive": {
+          "$ref": "#/definitions/caseSensitive"
+        },
+        "in": {
+          "$ref": "#/definitions/in"
+        }
+      }
+    },
+    "replaceMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "map"
+      ],
+      "description": "Replace several tokens, the most specific first. With wildcard, * is any run of letters, digits and _, ? is one of them, and $1, $2... insert what they matched.",
+      "properties": {
+        "type": {
+          "const": "replaceMap"
+        },
+        "description": {
+          "$ref": "#/definitions/description"
+        },
+        "enabled": {
+          "$ref": "#/definitions/enabled"
+        },
+        "languages": {
+          "$ref": "#/definitions/languages"
+        },
+        "files": {
+          "$ref": "#/definitions/files"
+        },
+        "map": {
+          "type": "object",
+          "description": "\"token\": \"replacement\" pairs. A token is also found inside a word (TOTO_ in TOTO_value), unless wholeWord is true. An entry can be { \"replace\", \"wholeWord\", \"wildcard\" } to override the rule settings.",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "replace": {
+                    "type": "string",
+                    "description": "Replacement (empty when omitted)."
+                  },
+                  "wholeWord": {
+                    "type": "boolean",
+                    "description": "Overrides the wholeWord of the rule for this token."
+                  },
+                  "wildcard": {
+                    "type": "boolean",
+                    "description": "Overrides the wildcard of the rule for this token."
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "wholeWord": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only match tokens not surrounded by word characters. TOTO_ is then never found in TOTO_value: override it on the entry with { \"replace\": \"\", \"wholeWord\": false }."
+        },
+        "caseSensitive": {
+          "$ref": "#/definitions/caseSensitive"
+        },
+        "in": {
+          "$ref": "#/definitions/in"
+        },
+        "wildcard": {
+          "type": "boolean",
+          "default": false,
+          "description": "Keys use wildcards: * is any run of letters, digits and _, ? is one of them (\\\\* and \\\\? are literal). $1, $2... insert what they matched: \"TOTO::te_*_type\": \"$1_t\"."
+        }
+      }
+    },
+    "removeLines": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "match"
+      ],
+      "description": "Remove every line matching a regular expression.",
+      "properties": {
+        "type": {
+          "const": "removeLines"
+        },
+        "description": {
+          "$ref": "#/definitions/description"
+        },
+        "enabled": {
+          "$ref": "#/definitions/enabled"
+        },
+        "languages": {
+          "$ref": "#/definitions/languages"
+        },
+        "files": {
+          "$ref": "#/definitions/files"
+        },
+        "match": {
+          "type": "string",
+          "minLength": 1
+        },
+        "caseSensitive": {
+          "$ref": "#/definitions/caseSensitive"
+        }
+      }
+    },
+    "removeBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "begin",
+        "end"
+      ],
+      "description": "Remove the lines from a line matching begin to the next line matching end, both included. Without end marker, everything up to the end of the file is removed.",
+      "properties": {
+        "type": {
+          "const": "removeBlock"
+        },
+        "description": {
+          "$ref": "#/definitions/description"
+        },
+        "enabled": {
+          "$ref": "#/definitions/enabled"
+        },
+        "languages": {
+          "$ref": "#/definitions/languages"
+        },
+        "files": {
+          "$ref": "#/definitions/files"
+        },
+        "begin": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Regular expression of the first line."
+        },
+        "end": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Regular expression of the last line."
+        },
+        "replace": {
+          "type": "string",
+          "description": "Text inserted instead, with the indentation of the first line."
+        },
+        "keepMarkers": {
+          "type": "boolean",
+          "default": false,
+          "description": "Keep the begin and end lines, remove only what is between."
+        },
+        "caseSensitive": {
+          "$ref": "#/definitions/caseSensitive"
+        }
+      }
+    },
+    "removeHeader": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "description": "Remove the comments at the top of the file that match (license, copyright).",
+      "properties": {
+        "type": {
+          "const": "removeHeader"
+        },
+        "description": {
+          "$ref": "#/definitions/description"
+        },
+        "enabled": {
+          "$ref": "#/definitions/enabled"
+        },
+        "languages": {
+          "$ref": "#/definitions/languages"
+        },
+        "files": {
+          "$ref": "#/definitions/files"
+        },
+        "match": {
+          "type": "string",
+          "description": "Regular expression a comment group must match to be removed. Default: copyright|licen[cs]e|\\(c\\)|all rights reserved|spdx"
+        },
+        "replace": {
+          "type": "string",
+          "description": "Text put at the top of the file instead."
+        },
+        "caseSensitive": {
+          "type": "boolean",
+          "description": "Case sensitive matching (default: false)."
+        }
+      }
+    },
+    "removeComments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "description": "Remove the comments. A line left empty is removed too.",
+      "properties": {
+        "type": {
+          "const": "removeComments"
+        },
+        "description": {
+          "$ref": "#/definitions/description"
+        },
+        "enabled": {
+          "$ref": "#/definitions/enabled"
+        },
+        "languages": {
+          "$ref": "#/definitions/languages"
+        },
+        "files": {
+          "$ref": "#/definitions/files"
+        },
+        "keep": {
+          "type": "string",
+          "description": "Regular expression of the comments to keep (tested on the whole comment, delimiters included)."
+        }
+      }
+    },
+    "removeFunctionBody": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "name"
+      ],
+      "description": "Replace the body of the functions whose name matches, keeping their signature. Brace languages and Python.",
+      "properties": {
+        "type": {
+          "const": "removeFunctionBody"
+        },
+        "description": {
+          "$ref": "#/definitions/description"
+        },
+        "enabled": {
+          "$ref": "#/definitions/enabled"
+        },
+        "languages": {
+          "$ref": "#/definitions/languages"
+        },
+        "files": {
+          "$ref": "#/definitions/files"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Regular expression of the whole function name, tested on the qualified name (Class::method) and on the short one."
+        },
+        "replace": {
+          "type": "string",
+          "description": "New body. Default: // body removed (pass  # body removed in Python)."
+        }
+      }
+    },
+    "pseudonymize": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "match"
+      ],
+      "description": "Replace each distinct match by a numbered alias, consistently across the file. The mapping is listed in the report.",
+      "properties": {
+        "type": {
+          "const": "pseudonymize"
+        },
+        "description": {
+          "$ref": "#/definitions/description"
+        },
+        "enabled": {
+          "$ref": "#/definitions/enabled"
+        },
+        "languages": {
+          "$ref": "#/definitions/languages"
+        },
+        "files": {
+          "$ref": "#/definitions/files"
+        },
+        "match": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Regular expression of the names to hide."
+        },
+        "template": {
+          "type": "string",
+          "pattern": "\\{n\\}",
+          "default": "anon_{n}",
+          "description": "Alias, {n} is replaced by the number of the name."
+        },
+        "caseSensitive": {
+          "$ref": "#/definitions/caseSensitive"
+        },
+        "in": {
+          "$ref": "#/definitions/in"
+        }
+      }
+    }
+  }
+}
