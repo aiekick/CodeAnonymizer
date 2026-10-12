@@ -6,9 +6,9 @@ import { StatusBar } from "./vscode/statusBar";
 
 export function activate(a_context: vscode.ExtensionContext): void {
   const rules = new RulesStore();
-  const diagnostics = vscode.languages.createDiagnosticCollection("Code Anonymizer");
+  const diagnostics = vscode.languages.createDiagnosticCollection("AI Code Anonymizer");
   const preview = new PreviewProvider(rules, diagnostics);
-  const output = vscode.window.createOutputChannel("Code Anonymizer");
+  const output = vscode.window.createOutputChannel("AI Code Anonymizer");
   a_context.subscriptions.push(
     rules,
     diagnostics,

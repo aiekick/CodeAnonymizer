@@ -139,7 +139,7 @@ export class PreviewProvider implements vscode.TextDocumentContentProvider, vsco
           `Forbidden term still present: "${a_leak.text}" (matches ${a_leak.term})`,
           vscode.DiagnosticSeverity.Warning
         );
-        diagnostic.source = "Code Anonymizer";
+        diagnostic.source = "AI Code Anonymizer";
         return diagnostic;
       })
     );
@@ -162,7 +162,7 @@ export class PreviewProvider implements vscode.TextDocumentContentProvider, vsco
           range = new vscode.Range(position.line, position.column, position.line, position.column + 1);
         }
         const diagnostic = new vscode.Diagnostic(range, a_error.message, vscode.DiagnosticSeverity.Error);
-        diagnostic.source = "Code Anonymizer";
+        diagnostic.source = "AI Code Anonymizer";
         return diagnostic;
       })
     );

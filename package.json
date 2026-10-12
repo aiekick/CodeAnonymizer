@@ -1,6 +1,6 @@
 {
-  "name": "code-anonymizer",
-  "displayName": "Code Anonymizer",
+  "name": "ai-code-anonymizer",
+  "displayName": "AI Code Anonymizer",
   "description": "Anonymize source code with live-previewed rules before sharing it with an AI",
   "version": "0.0.2",
   "publisher": "aiekick",
@@ -31,37 +31,37 @@
       {
         "command": "codeAnonymizer.openPreview",
         "title": "Switch to Anonymized Preview",
-        "category": "Code Anonymizer",
+        "category": "AI Code Anonymizer",
         "icon": "$(shield)"
       },
       {
         "command": "codeAnonymizer.openSource",
         "title": "Switch to Original File",
-        "category": "Code Anonymizer",
+        "category": "AI Code Anonymizer",
         "icon": "$(go-to-file)"
       },
       {
         "command": "codeAnonymizer.openDiff",
         "title": "Compare Original with Anonymized",
-        "category": "Code Anonymizer",
+        "category": "AI Code Anonymizer",
         "icon": "$(diff)"
       },
       {
         "command": "codeAnonymizer.editRules",
         "title": "Edit Anonymization Rules",
-        "category": "Code Anonymizer",
+        "category": "AI Code Anonymizer",
         "icon": "$(settings-gear)"
       },
       {
         "command": "codeAnonymizer.copyAnonymized",
         "title": "Copy Anonymized Code",
-        "category": "Code Anonymizer",
+        "category": "AI Code Anonymizer",
         "icon": "$(copy)"
       },
       {
         "command": "codeAnonymizer.showReport",
         "title": "Show Anonymization Report",
-        "category": "Code Anonymizer",
+        "category": "AI Code Anonymizer",
         "icon": "$(output)"
       }
     ],
@@ -76,7 +76,7 @@
     "submenus": [
       {
         "id": "codeAnonymizer.contextMenu",
-        "label": "Code Anonymizer"
+        "label": "AI Code Anonymizer"
       }
     ],
     "menus": {
@@ -162,7 +162,7 @@
       ]
     },
     "configuration": {
-      "title": "Code Anonymizer",
+      "title": "AI Code Anonymizer",
       "properties": {
         "codeAnonymizer.rulesFile": {
           "type": "string",

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Code Anonymizer rules",
+  "title": "AI Code Anonymizer rules",
   "type": "object",
   "additionalProperties": false,
   "properties": {

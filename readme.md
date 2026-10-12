@@ -1,4 +1,4 @@
-# Code Anonymizer
+# AI Code Anonymizer
 
 Anonymize source code before sending it to an AI for analysis: remove license headers, confidential blocks and critical algorithms, replace company types and names. The result is previewed live next to the source, and refreshed as you edit the rules.
 
@@ -7,7 +7,7 @@ Anonymize source code before sending it to an AI for analysis: remove license he
 
 ## How it works
 
-1. Open a source file and click the **shield** button in its title bar (or `Ctrl+K A`, or right-click the file in the explorer: **Code Anonymizer**).
+1. Open a source file and click the **shield** button in its title bar (or `Ctrl+K A`, or right-click the file in the explorer: **AI Code Anonymizer**).
    A read-only preview opens beside the source. Nothing is ever written to the source file.
 2. The first time, accept **Create Rules File**: `.vscode/anonymizer.json` is created with one example of each rule, and opens in a third column.
 3. Edit the rules: the preview is updated **as you type**, saved or not. Autocompletion and validation come with the file.
@@ -26,7 +26,7 @@ The source, the preview and the rules side by side: change a rule, see the resul
 | Copy Anonymized Code | preview title bar, editor menu | Copies the anonymized code to the clipboard |
 | Show Anonymization Report | status bar, editor menu | What each rule changed, the pseudonym table, the forbidden terms left |
 
-The **Code Anonymizer** submenu gathers these commands when you right-click a file in the explorer, an editor tab, or inside an editor.
+The **AI Code Anonymizer** submenu gathers these commands when you right-click a file in the explorer, an editor tab, or inside an editor.
 
 ## Rules
 

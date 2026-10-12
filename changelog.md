@@ -1,6 +1,6 @@
 # Change Log
 
-All notable changes to the "Code Anonymizer" extension will be documented in this file.
+All notable changes to the "AI Code Anonymizer" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
@@ -17,7 +17,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### Added
 
 - Anonymized preview of the current file, beside it: shield button in the file title bar (`Ctrl+K A`), and a button in the preview to switch back to the original. The preview is refreshed live when the source or the rules change, saved or not.
-- Code Anonymizer submenu on files in the explorer, on editor tabs and in the editor.
+- AI Code Anonymizer submenu on files in the explorer, on editor tabs and in the editor.
 - Diff between the original and the anonymized file.
 - Rules file (`.vscode/anonymizer.json`, JSON with comments) created from a template, with a JSON schema for autocompletion and validation.
 - Rules: `replace`, `replaceMap`, `removeLines`, `removeBlock`, `removeHeader`, `removeComments`, `removeFunctionBody`, `pseudonymize`, filtered by language and by file glob.

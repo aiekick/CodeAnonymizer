@@ -1,7 +1,7 @@
 /// Content of a new rules file: one example of each rule type, so the file
 /// documents itself. Backslashes are JSON escaped: "\\b" is the regex \b.
 export const RULES_TEMPLATE = String.raw`{
-  // Code Anonymizer rules.
+  // AI Code Anonymizer rules.
   // The rules run from top to bottom, each one on the output of the previous one.
   // Every rule accepts: "description", "enabled": false, "languages": ["cpp"], "files": "**/*.h".
   // Regular expressions are JavaScript ones, multiline: ^ and $ match at line boundaries.

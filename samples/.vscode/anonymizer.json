@@ -1,5 +1,5 @@
 {
-  // Code Anonymizer rules.
+  // AI Code Anonymizer rules.
   // The rules run from top to bottom, each one on the output of the previous one.
   // Every rule accepts: "description", "enabled": false, "languages": ["cpp"], "files": "**/*.h".
   // Regular expressions are JavaScript ones, multiline: ^ and $ match at line boundaries.
