@@ -10,7 +10,13 @@ const projectRoot = path.resolve(__dirname, '..');
 
 // Read the metadata from package.json
 const packageJson = require(path.join(projectRoot, 'package.json'));
-const vsixFilename = path.join(projectRoot, `${packageJson.name}-${packageJson.version}.vsix`);
+
+// Optional --target=<platform> (e.g. linux-x64, win32-x64) for a platform
+// specific vsix; without it the vsix is universal
+const targetArg = process.argv.find(aArg => aArg.startsWith('--target='));
+const targetPlatform = targetArg ? targetArg.split('=')[1] : null;
+const vsixSuffix = targetPlatform ? `-${targetPlatform}` : '';
+const vsixFilename = path.join(projectRoot, `${packageJson.name}-${packageJson.version}${vsixSuffix}.vsix`);
 
 // Escape a value interpolated into the generated XML manifests.
 function escapeXml(aValue) {
@@ -21,43 +27,6 @@ function escapeXml(aValue) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&apos;');
 }
-
-// Content of the [Content_Types].xml file
-const contentTypesXml = `<?xml version="1.0" encoding="utf-8"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="json" ContentType="application/json"/>
-  <Default Extension="vsixmanifest" ContentType="text/xml"/>
-  <Default Extension="md" ContentType="text/markdown"/>
-  <Default Extension="js" ContentType="application/javascript"/>
-  <Default Extension="png" ContentType="image/png"/>
-  <Default Extension="svg" ContentType="image/svg+xml"/>
-  <Default Extension="css" ContentType="text/css"/>
-  <Default Extension="html" ContentType="text/html"/>
-  <Default Extension="xml" ContentType="text/xml"/>
-  <Default Extension="txt" ContentType="text/plain"/>
-</Types>`;
-
-// Content of the extension.vsixmanifest file
-const vsixManifestTemplate = `<?xml version="1.0" encoding="utf-8"?>
-<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
-  <Metadata>
-    <Identity Language="en-US" Id="${escapeXml(packageJson.name)}" Version="${escapeXml(packageJson.version)}" Publisher="${escapeXml(packageJson.publisher)}" />
-    <DisplayName>${escapeXml(packageJson.displayName || packageJson.name)}</DisplayName>
-    <Description xml:space="preserve">${escapeXml(packageJson.description)}</Description>
-    <Tags>${escapeXml((packageJson.keywords || []).join(','))}</Tags>
-    <Categories>${escapeXml((packageJson.categories || []).join(','))}</Categories>
-    <GalleryFlags>Public</GalleryFlags>
-  </Metadata>
-  <Installation>
-    <InstallationTarget Id="Microsoft.VisualStudio.Code"/>
-  </Installation>
-  <Dependencies/>
-  <Assets>
-    <Asset Type="Microsoft.VisualStudio.Code.Manifest" Path="extension/package.json" Addressable="true" />
-    <Asset Type="Microsoft.VisualStudio.Services.Content.Details" Path="extension/readme.md" Addressable="true" />
-    <Asset Type="Microsoft.VisualStudio.Services.Manifest" Path="extension.vsixmanifest" Addressable="true" />
-  </Assets>
-</PackageManifest>`;
 
 // ------------------------------------------------------------
 // CRC32 (zip checksum)
@@ -171,32 +140,15 @@ class ZipWriter {
 // ------------------------------------------------------------
 // Archive content
 // ------------------------------------------------------------
-const zipWriter = new ZipWriter();
 
-// Recursively add a folder and its content
-function addDirectoryToArchive(aDirPath, aEntryPrefix) {
-    const dirEntries = fs.readdirSync(aDirPath, { withFileTypes: true });
-    for (const dirEntry of dirEntries) {
-        const fullPath = path.join(aDirPath, dirEntry.name);
-        const entryName = `${aEntryPrefix}/${dirEntry.name}`;
-        if (dirEntry.isDirectory()) {
-            addDirectoryToArchive(fullPath, entryName);
-        } else {
-            zipWriter.addFile(`extension/${entryName}`, fs.readFileSync(fullPath));
-        }
-    }
-}
-
-// Generated files (in memory, no temporary files on disk)
-zipWriter.addFile('[Content_Types].xml', Buffer.from(contentTypesXml, 'utf8'));
-zipWriter.addFile('extension.vsixmanifest', Buffer.from(vsixManifestTemplate, 'utf8'));
-
-// Individual files to include
+// Individual files to include: source path -> path inside extension/.
+// The license gets a .txt extension like vsce does, so every part of
+// the package has a content type
 const filesToInclude = [
-    'package.json',
-    'readme.md',
-    'changelog.md',
-    'LICENSE'
+    ['package.json', 'package.json'],
+    ['readme.md', 'readme.md'],
+    ['changelog.md', 'changelog.md'],
+    ['LICENSE', 'LICENSE.txt'],
 ];
 
 // Folders to include
@@ -206,25 +158,193 @@ const foldersToInclude = [
     'out'
 ];
 
-// Add the individual files
-filesToInclude.forEach(fileName => {
-    const filePath = path.join(projectRoot, fileName);
+// Entry name inside extension/ -> file content
+const extensionFiles = new Map();
+
+// Recursively collect a folder and its content
+function collectDirectory(aDirPath, aEntryPrefix) {
+    const dirEntries = fs.readdirSync(aDirPath, { withFileTypes: true });
+    for (const dirEntry of dirEntries) {
+        const fullPath = path.join(aDirPath, dirEntry.name);
+        const entryName = `${aEntryPrefix}/${dirEntry.name}`;
+        if (dirEntry.isDirectory()) {
+            collectDirectory(fullPath, entryName);
+        } else {
+            extensionFiles.set(entryName, fs.readFileSync(fullPath));
+        }
+    }
+}
+
+filesToInclude.forEach(([sourceName, entryName]) => {
+    const filePath = path.join(projectRoot, sourceName);
     if (fs.existsSync(filePath) && fs.lstatSync(filePath).isFile()) {
-        zipWriter.addFile(`extension/${fileName}`, fs.readFileSync(filePath));
+        extensionFiles.set(entryName, fs.readFileSync(filePath));
     } else {
-        console.warn(`Warning: the file '${fileName}' does not exist or is not a file.`);
+        console.warn(`Warning: the file '${sourceName}' does not exist or is not a file.`);
     }
 });
 
-// Add the folders and their content
 foldersToInclude.forEach(folderName => {
     const folderPath = path.join(projectRoot, folderName);
     if (fs.existsSync(folderPath) && fs.lstatSync(folderPath).isDirectory()) {
-        addDirectoryToArchive(folderPath, folderName);
+        collectDirectory(folderPath, folderName);
     } else {
         console.warn(`Warning: the folder '${folderName}' does not exist or is not a directory.`);
     }
 });
+
+// ------------------------------------------------------------
+// [Content_Types].xml: one entry per file extension in the package
+// ------------------------------------------------------------
+const CONTENT_TYPES = {
+    '.json': 'application/json',
+    '.vsixmanifest': 'text/xml',
+    '.md': 'text/markdown',
+    '.txt': 'text/plain',
+    '.js': 'application/javascript',
+    '.mjs': 'application/javascript',
+    '.cjs': 'application/javascript',
+    '.ts': 'video/mp2t',
+    '.map': 'application/json',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
+    '.css': 'text/css',
+    '.html': 'text/html',
+    '.xml': 'text/xml',
+    '.xsd': 'text/xml',
+    '.yml': 'text/yaml',
+    '.yaml': 'text/yaml',
+    '.wasm': 'application/wasm',
+    '.ttf': 'font/ttf',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+};
+const DEFAULT_CONTENT_TYPE = 'application/octet-stream';
+
+// Every part of the package needs a content type: a Default per file
+// extension, and an Override for the files without extension
+const usedExtensions = new Set(['.vsixmanifest']);
+const extensionlessEntries = [];
+for (const entryName of extensionFiles.keys()) {
+    const fileExtension = path.extname(entryName).toLowerCase();
+    if (fileExtension) {
+        usedExtensions.add(fileExtension);
+    } else {
+        extensionlessEntries.push(entryName);
+    }
+}
+
+const contentTypesXml = `<?xml version="1.0" encoding="utf-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+${[...usedExtensions].map(ext => `  <Default Extension="${escapeXml(ext)}" ContentType="${CONTENT_TYPES[ext] || DEFAULT_CONTENT_TYPE}"/>`).join('\n')}${extensionlessEntries.map(entryName => `
+  <Override PartName="/extension/${escapeXml(entryName)}" ContentType="${DEFAULT_CONTENT_TYPE}"/>`).join('')}
+</Types>`;
+
+// ------------------------------------------------------------
+// extension.vsixmanifest, mirroring what vsce generates
+// ------------------------------------------------------------
+const isWebExtension = Boolean(packageJson.browser);
+
+// vsce adds 'web' to the extension kinds and a __web_extension tag for
+// extensions with a browser entry point; the Marketplace relies on them
+const extensionKinds = [].concat(packageJson.extensionKind || ['workspace']);
+if (isWebExtension && !extensionKinds.includes('web')) {
+    extensionKinds.push('web');
+}
+const tags = [...(packageJson.keywords || [])];
+if (isWebExtension) {
+    tags.push('__web_extension');
+}
+
+const repositoryUrl = typeof packageJson.repository === 'string'
+    ? packageJson.repository
+    : packageJson.repository && packageJson.repository.url;
+
+const properties = [
+    ['Microsoft.VisualStudio.Code.Engine', packageJson.engines.vscode],
+    ['Microsoft.VisualStudio.Code.ExtensionDependencies', (packageJson.extensionDependencies || []).join(',')],
+    ['Microsoft.VisualStudio.Code.ExtensionPack', (packageJson.extensionPack || []).join(',')],
+    ['Microsoft.VisualStudio.Code.ExtensionKind', extensionKinds.join(',')],
+    ['Microsoft.VisualStudio.Code.LocalizedLanguages', ''],
+];
+if (repositoryUrl) {
+    properties.push(
+        ['Microsoft.VisualStudio.Services.Links.Source', repositoryUrl],
+        ['Microsoft.VisualStudio.Services.Links.Getstarted', repositoryUrl],
+        ['Microsoft.VisualStudio.Services.Links.GitHub', repositoryUrl],
+        ['Microsoft.VisualStudio.Services.Links.Support', `${repositoryUrl.replace(/\.git$/, '')}/issues`],
+        ['Microsoft.VisualStudio.Services.Links.Learn', `${repositoryUrl.replace(/\.git$/, '')}#readme`],
+    );
+}
+if (packageJson.galleryBanner) {
+    properties.push(
+        ['Microsoft.VisualStudio.Services.Branding.Color', packageJson.galleryBanner.color],
+        ['Microsoft.VisualStudio.Services.Branding.Theme', packageJson.galleryBanner.theme],
+    );
+}
+properties.push(
+    ['Microsoft.VisualStudio.Services.GitHubFlavoredMarkdown', 'true'],
+    ['Microsoft.VisualStudio.Services.Content.Pricing', 'Free'],
+);
+
+// Top level readme and changelog, whatever their case
+const findTopLevelEntry = aFileName => [...extensionFiles.keys()].find(entryName => entryName.toLowerCase() === aFileName);
+const readmeEntry = findTopLevelEntry('readme.md');
+const changelogEntry = findTopLevelEntry('changelog.md');
+
+const assets = [
+    ['Microsoft.VisualStudio.Code.Manifest', 'extension/package.json'],
+];
+if (readmeEntry) {
+    assets.push(['Microsoft.VisualStudio.Services.Content.Details', `extension/${readmeEntry}`]);
+}
+if (changelogEntry) {
+    assets.push(['Microsoft.VisualStudio.Services.Content.Changelog', `extension/${changelogEntry}`]);
+}
+if (extensionFiles.has('LICENSE.txt')) {
+    assets.push(['Microsoft.VisualStudio.Services.Content.License', 'extension/LICENSE.txt']);
+}
+if (packageJson.icon && extensionFiles.has(packageJson.icon)) {
+    assets.push(['Microsoft.VisualStudio.Services.Icons.Default', `extension/${packageJson.icon}`]);
+}
+
+const vsixManifestXml = `<?xml version="1.0" encoding="utf-8"?>
+<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
+  <Metadata>
+    <Identity Language="en-US" Id="${escapeXml(packageJson.name)}" Version="${escapeXml(packageJson.version)}" Publisher="${escapeXml(packageJson.publisher)}"${targetPlatform ? ` TargetPlatform="${escapeXml(targetPlatform)}"` : ''} />
+    <DisplayName>${escapeXml(packageJson.displayName || packageJson.name)}</DisplayName>
+    <Description xml:space="preserve">${escapeXml(packageJson.description)}</Description>
+    <Tags>${escapeXml(tags.join(','))}</Tags>
+    <Categories>${escapeXml((packageJson.categories || []).join(','))}</Categories>
+    <GalleryFlags>Public</GalleryFlags>
+    <Properties>
+${properties.map(([id, value]) => `      <Property Id="${id}" Value="${escapeXml(value)}" />`).join('\n')}
+    </Properties>${extensionFiles.has('LICENSE.txt') ? `
+    <License>extension/LICENSE.txt</License>` : ''}${packageJson.icon && extensionFiles.has(packageJson.icon) ? `
+    <Icon>extension/${escapeXml(packageJson.icon)}</Icon>` : ''}
+  </Metadata>
+  <Installation>
+    <InstallationTarget Id="Microsoft.VisualStudio.Code"/>
+  </Installation>
+  <Dependencies/>
+  <Assets>
+${assets.map(([type, assetPath]) => `    <Asset Type="${type}" Path="${escapeXml(assetPath)}" Addressable="true" />`).join('\n')}
+  </Assets>
+</PackageManifest>`;
+
+// ------------------------------------------------------------
+// Zip it, manifests first like vsce
+// ------------------------------------------------------------
+const zipWriter = new ZipWriter();
+zipWriter.addFile('extension.vsixmanifest', Buffer.from(vsixManifestXml, 'utf8'));
+zipWriter.addFile('[Content_Types].xml', Buffer.from(contentTypesXml, 'utf8'));
+for (const [entryName, fileContent] of extensionFiles) {
+    zipWriter.addFile(`extension/${entryName}`, fileContent);
+}
 
 // Write the package file
 const vsixBuffer = zipWriter.toBuffer();
